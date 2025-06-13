@@ -1,0 +1,14 @@
+The pdf provided is a supermarket's marketing flyer and includes offers on various products. You should examine the document and give me a list of all the products in it with the associated prices and savings if available.
+Give the answer as a JSON array where each item follows the structure provided. Make sure to only give products that visually appear in the image, without relying in any way on previous answers or external sources when formulating your answer.
+In your answer include the following: 
+- the name of the product
+- a normalized name without marketing buzzwords or additional descriptions
+- the price
+- the unity of measurement (uom) in which the quantity is measured
+- the quantity
+- the price per unity (for example if the product is measured in kg, you need to specify the price per kg here but only as a number without the unit)
+- the number of pieces available for the offer
+- the type of product (it should be in italian just like the input document, also it should fully qualify the item, for example a type of product would be \"prosciutto cotto\" and not just \"prosciutto\" and it should not include a specific brand)
+- the selling category of the product
+
+If there are offers that include two or more different products grouped try to separate them into different items in the output (in this case split the number of pieces available equally amongst them unless you can find more precise info in the document, so for example if there are 2 grouped products with a total of 1000 pieces you should set the pieces available to 500 for each).
