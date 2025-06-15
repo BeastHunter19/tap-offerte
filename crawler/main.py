@@ -24,8 +24,13 @@ def main():
     filename = os.path.basename(PDF_PATH)
     payload = {
         "filename": filename,
-        "url": SHARED_FOLDER + filename,
-        "checksum": checksum
+        "url": filename,
+        "checksum": checksum,
+        "source": "DECO",
+        "validity": {
+            "from": "13-05-2025",
+            "to": "22-05-2025"
+        }
     }
     print("Sending metadata:", payload)
     sleep(1)
