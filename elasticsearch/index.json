@@ -1,0 +1,23 @@
+{
+  "mappings": {
+    "properties": {
+      "name": { "type": "keyword" },
+      "price": { "type": "float" },
+      "uom": { "type": "keyword" },
+      "price_per_unit": { "type": "float" },
+      "pieces_available": { "type": "integer" },
+      "normalized_name": { "type": "keyword" },
+      "type": { "type": "keyword" },
+      "category": { "type": "keyword" },
+      "quantity": { "type": "float" },
+
+      "source": { "type": "keyword" },
+      "validity": {
+        "properties": {
+          "from": { "type": "date", "format": "dd-MM-yyyy" },
+          "to":   { "type": "date", "format": "dd-MM-yyyy" }
+        }
+      }
+    }
+  }
+}

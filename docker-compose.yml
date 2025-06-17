@@ -77,6 +77,23 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+  index:
+    image: curlimages/curl:latest
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./elasticsearch/index.json:/index.json:ro
+      - ./elasticsearch/init-index.sh:/init-index.sh:ro
+    environment:
+      - INDEX_NAME=offers
+      - ES_HOST=http://elasticsearch:9200
+    entrypoint: [ "sh", "/init-index.sh" ]
 
 volumes:
   shared-storage:
