@@ -1,12 +1,16 @@
-import os, base64
+import os, shutil, hashlib
 from pyspark.sql.session import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StringType
 from google import genai
 from google.genai import types
 
-def download_pdf(url):
-    file_path = ""
+def download_pdf(message):
+    file_path = shutil.copy(SHARED_FOLDER + message.url, PDF_DOWNLOAD_PATH)
+    with open(file_path, "rb") as f:
+        checksum = hashlib.sha256(f.read()).hexdigest()
+    if(checksum != message.checksum):
+        return ""
     return file_path
 
 def gemini_request(file_path):
@@ -63,16 +67,21 @@ def gemini_request(file_path):
     return response.text
 
 def handle_message(message):
-    return
+    pdf_path = download_pdf(message)
+    if(pdf_path == ""):
+        print("Errore nel download del pdf.")
+        return
+    ai_output = gemini_request(pdf_path)
+    print(ai_output)
 
 def handle_batch(batch_df, batch_id):
     for row in batch_df.collect():
         handle_message(row)
-    return
 
 KAFKA_SERVER = "broker:9092"
 TOPIC = "pdf-metadata"
-PDF_DOWNLOAD_PATH = "/tmp/pdfs/"
+PDF_DOWNLOAD_PATH = "/tmp/"
+SHARED_FOLDER = "/data/"
 GOOGLE_API_KEY_FILE = os.getenv("GOOGLE_API_KEY_FILE")
 with open(GOOGLE_API_KEY_FILE, "r") as google_api_key_file:
     GOOGLE_API_KEY = google_api_key_file.read()
@@ -99,9 +108,8 @@ df = df.selectExpr("CAST(value AS STRING) as json_string") \
     .select(from_json(col("json_string"), schema).alias("data")) \
     .select("data.*")
 
-query = df.writeStream \
+df.writeStream \
     .foreachBatch(handle_batch) \
     .outputMode("append") \
-    .start()
-
-query.awaitTermination()
+    .start() \
+    .awaitTermination()
