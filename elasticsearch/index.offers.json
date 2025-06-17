@@ -12,11 +12,14 @@
       "quantity": { "type": "float" },
 
       "source": { "type": "keyword" },
-      "validity": {
-        "properties": {
-          "from": { "type": "date", "format": "dd-MM-yyyy" },
-          "to":   { "type": "date", "format": "dd-MM-yyyy" }
-        }
+      "flyer_checksum": { "type": "keyword" },
+      "validity_from": {
+        "type": "date",
+        "format": "yyyy-MM-dd||strict_date_optional_time||epoch_millis"
+      },
+      "validity_to": {
+        "type": "date",
+        "format": "yyyy-MM-dd||strict_date_optional_time||epoch_millis"
       }
     }
   }

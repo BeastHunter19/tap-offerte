@@ -1,0 +1,27 @@
+{
+  "mappings": {
+    "properties": {
+      "filename": { "type": "keyword" },
+      "checksum": { "type": "keyword" },
+      "source": { "type": "keyword" },
+      "offers_count": { "type": "integer" },
+      "processing_status": { "type": "keyword" },
+      "validity_from": {
+        "type": "date",
+        "format": "yyyy-MM-dd||strict_date_optional_time||epoch_millis"
+      },
+      "validity_to": {
+        "type": "date",
+        "format": "yyyy-MM-dd||strict_date_optional_time||epoch_millis"
+      },
+      "first_processed_at": {
+        "type": "date",
+        "format": "strict_date_time||epoch_millis"
+      },
+      "last_processed_at": {
+        "type": "date",
+        "format": "strict_date_time||epoch_millis"
+      }
+    }
+  }
+}

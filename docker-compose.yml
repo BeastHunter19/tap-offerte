@@ -88,12 +88,10 @@ services:
       elasticsearch:
         condition: service_healthy
     volumes:
-      - ./elasticsearch/index.json:/index.json:ro
-      - ./elasticsearch/init-index.sh:/init-index.sh:ro
+      - ./elasticsearch:/elasticsearch:ro
     environment:
-      - INDEX_NAME=offers
       - ES_HOST=http://elasticsearch:9200
-    entrypoint: [ "sh", "/init-index.sh" ]
+    entrypoint: [ "sh", "/elasticsearch/init-index.sh" ]
 
 volumes:
   shared-storage:
