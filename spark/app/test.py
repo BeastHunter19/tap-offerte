@@ -1,7 +1,7 @@
 import os, shutil, hashlib
 from pyspark.sql.session import SparkSession
 from pyspark.sql.functions import from_json, col
-from pyspark.sql.types import StructType, StringType
+from pyspark.sql.types import StructType, StringType, StructField
 from google import genai
 from google.genai import types
 
@@ -87,10 +87,16 @@ with open(GOOGLE_API_KEY_FILE, "r") as google_api_key_file:
     GOOGLE_API_KEY = google_api_key_file.read()
 GEMINI_PROMPT_FILE = "/opt/tap/prompt.txt"
 
-schema = StructType() \
-    .add("filename", StringType()) \
-    .add("url", StringType()) \
-    .add("checksum", StringType())
+schema = StructType([
+    StructField("filename", StringType(), True),
+    StructField("url", StringType(), True),
+    StructField("checksum", StringType(), True),
+    StructField("source", StringType(), True),
+    StructField("validity", StructType([
+        StructField("from", StringType(), True),
+        StructField("to", StringType(), True)
+    ]), True)
+])
 
 spark = SparkSession.builder \
     .appName("KafkaPDFListener") \
