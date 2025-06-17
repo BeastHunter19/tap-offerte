@@ -12,7 +12,7 @@ services:
       topics:
         condition: service_completed_successfully
   broker:
-    image: apache/kafka:4.0.0
+    image: apache/kafka:3.9.1
     hostname: broker
     container_name: broker
     ports:
@@ -33,7 +33,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
   topics:
-    image: apache/kafka:4.0.0
+    image: apache/kafka:3.9.1
     hostname: topics
     container_name: topics
     command: > 
@@ -67,7 +67,10 @@ services:
       topics:
         condition: service_completed_successfully
     command: >
-      /opt/spark/bin/spark-submit --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.0 /opt/tap/test.py
+      /opt/spark/bin/spark-submit
+      --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp"
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.6
+      /opt/tap/test.py
 
 volumes:
   shared-storage:
