@@ -6,8 +6,6 @@ services:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     environment:
       XPACK_MONITORING_ENABLED: "false"
-    ports:
-      - "5044:5044"
     depends_on:
       topics:
         condition: service_completed_successfully
@@ -15,8 +13,6 @@ services:
     image: apache/kafka:3.9.1
     hostname: broker
     container_name: broker
-    ports:
-      - '9092:9092'
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
@@ -88,6 +84,8 @@ services:
       interval: 5s
       timeout: 10s
       retries: 20
+    ports:
+      - "9200:9200"
   index:
     image: curlimages/curl:latest
     depends_on:
