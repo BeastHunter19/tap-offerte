@@ -1,25 +1,21 @@
 {
   "mappings": {
     "properties": {
-      "name": { "type": "keyword" },
+      "name": { "type": "text" },
       "price": { "type": "float" },
-      "uom": { "type": "keyword" },
-      "price_per_unit": { "type": "float" },
-      "pieces_available": { "type": "integer" },
-      "normalized_name": { "type": "keyword" },
-      "type": { "type": "keyword" },
-      "category": { "type": "keyword" },
       "quantity": { "type": "float" },
-
+      "uom": { "type": "keyword" },
+      "category": { "type": "keyword" },
+      "type": { "type": "keyword" },
       "source": { "type": "keyword" },
       "flyer_checksum": { "type": "keyword" },
       "validity_from": {
         "type": "date",
-        "format": "yyyy-MM-dd||strict_date_optional_time||epoch_millis"
+        "format": "dd-MM-yyyy"
       },
       "validity_to": {
         "type": "date",
-        "format": "yyyy-MM-dd||strict_date_optional_time||epoch_millis"
+        "format": "dd-MM-yyyy"
       }
     }
   }

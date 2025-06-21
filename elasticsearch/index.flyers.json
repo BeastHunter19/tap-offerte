@@ -1,24 +1,24 @@
 {
   "mappings": {
     "properties": {
-      "filename": { "type": "keyword" },
       "checksum": { "type": "keyword" },
+      "filename": { "type": "keyword" },
       "source": { "type": "keyword" },
-      "offers_count": { "type": "integer" },
-      "processing_status": { "type": "keyword" },
       "validity_from": {
         "type": "date",
-        "format": "yyyy-MM-dd||strict_date_optional_time||epoch_millis"
+        "format": "dd-MM-yyyy"
       },
       "validity_to": {
         "type": "date",
-        "format": "yyyy-MM-dd||strict_date_optional_time||epoch_millis"
+        "format": "dd-MM-yyyy"
       },
-      "first_processed_at": {
-        "type": "date",
-        "format": "strict_date_time||epoch_millis"
-      },
-      "last_processed_at": {
+      "offers_count": { "type": "integer" },
+      "ai_model": { "type": "keyword" },
+      "ai_input_tokens": { "type": "integer" },
+      "ai_cached_tokens": { "type": "integer" },
+      "ai_output_tokens": { "type": "integer" },
+      "ai_finish_reason": { "type": "keyword" },
+      "processed_at": {
         "type": "date",
         "format": "strict_date_time||epoch_millis"
       }
