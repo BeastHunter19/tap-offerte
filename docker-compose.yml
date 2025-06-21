@@ -96,6 +96,21 @@ services:
     environment:
       - ES_HOST=http://elasticsearch:9200
     entrypoint: [ "sh", "/elasticsearch/init-index.sh" ]
+  kibana:
+    hostname: kibana
+    image: docker.elastic.co/kibana/kibana:9.0.2
+    ports:
+      - 5601:5601
+    volumes:
+      - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - ./kibana/start-kibana.sh:/usr/local/bin/start-kibana.sh:ro
+    depends_on:
+      - elasticsearch
+    secrets:
+      - kibana_saved_objects_encryption_key
+    environment:
+      - ENCRYPTION_KEY_FILE=/run/secrets/kibana_saved_objects_encryption_key
+    entrypoint: [ "/usr/local/bin/start-kibana.sh" ]
 
 volumes:
   shared-storage:
@@ -104,3 +119,5 @@ volumes:
 secrets:
   gemini_api_key:
     file: ./secrets/gemini_api_key.txt
+  kibana_saved_objects_encryption_key:
+    file: ./secrets/kibana_saved_objects_encryption_key.txt
