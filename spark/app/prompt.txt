@@ -1,14 +1,20 @@
-The pdf provided is a supermarket's marketing flyer and includes offers on various products. You should examine the document and give me a list of all the products in it with the associated prices and savings if available.
-Give the answer as a JSON array where each item follows the structure provided. Make sure to only give products that visually appear in the image, without relying in any way on previous answers or external sources when formulating your answer.
-In your answer include the following: 
-- the name of the product
-- a normalized name without marketing buzzwords or additional descriptions
-- the price
-- the unity of measurement (uom) in which the quantity is measured
-- the quantity
-- the price per unity (for example if the product is measured in kg, you need to specify the price per kg here but only as a number without the unit)
-- the number of pieces available for the offer
-- the type of product (it should be in italian just like the input document, also it should fully qualify the item, for example a type of product would be \"prosciutto cotto\" and not just \"prosciutto\" and it should not include a specific brand)
-- the selling category of the product
-
-If there are offers that include two or more different products grouped try to separate them into different items in the output (in this case split the number of pieces available equally amongst them unless you can find more precise info in the document, so for example if there are 2 grouped products with a total of 1000 pieces you should set the pieces available to 500 for each).
+Il pdf fornito è un volantino promozionale di un supermercato e include offerte su vari prodotti.
+Dovresti esaminare il documento e darmi una lista di tutti i prodotti al suo interno con i relativi prezzi.
+Fornisci la risposta come array JSON in cui ogni elemento segue la struttura fornita.
+Assicurati di dare solo prodotti che appaiano visivamente nell'immagine, senza basarti
+in alcun modo su risposte precedenti o fonti esterne nel formulare la tua risposta.
+Se ci sono offerte che includono due o più tipi diversi di prodotti raggruppati
+cerca di separarli in elementi separati nell'output.
+Nella tua risposta includi le seguenti cose:
+- il nome del prodotto
+- il prezzo
+- la quantità
+- l'unità di misura (uom) in cui la quantità è misurata
+- la categoria di vendita del prodotto
+- il tipo generico di prodotto
+Alcuni esempi per il tipo di prodotto (nome -> tipo)
+- Parmigiano Reggiano D.O.P. -> Parmigiano
+- Levissima Acqua naturale -> Acqua naturale
+- Ragusa Latte Mozzarella tris -> Mozzarella
+- Gran Terre LiberaMente tacchino arrosto -> Tacchino
+- Casa Milo Pasta fresca vari tipi -> Pasta

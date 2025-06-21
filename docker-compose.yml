@@ -76,7 +76,7 @@ services:
       /opt/spark/bin/spark-submit
       --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp"
       --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.4,org.elasticsearch:elasticsearch-spark-30_2.12:9.0.2
-      /opt/tap/test.py
+      /opt/tap/tap-offerte.py
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.0.2
     mem_limit: 2 GB
