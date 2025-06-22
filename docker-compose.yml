@@ -86,6 +86,8 @@ services:
       retries: 20
     ports:
       - "9200:9200"
+    volumes:
+      - elastic-data:/usr/share/elasticsearch/data
   index:
     image: curlimages/curl:latest
     depends_on:
@@ -115,6 +117,7 @@ services:
 volumes:
   shared-storage:
   sparklibs:
+  elastic-data:
 
 secrets:
   gemini_api_key:
