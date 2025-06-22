@@ -2,6 +2,13 @@ FROM apache/spark:3.4.4-python3
 
 USER root
 
+# Create directory for spark libs cache volume with correct ownership
+ARG SPARK_USER_UID=185
+ARG SPARK_USER_GID=185
+
+RUN mkdir -p /opt/spark-ivy-cache && \
+    chown -R ${SPARK_USER_UID}:${SPARK_USER_GID} /opt/spark-ivy-cache
+
 # Install Python 3.9 and dependencies
 RUN apt-get update && \
     apt-get install -y software-properties-common && \
