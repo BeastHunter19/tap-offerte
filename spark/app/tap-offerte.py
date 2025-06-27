@@ -47,19 +47,17 @@ kafka_schema = StructType([
     StructField("url", StringType(), False),
     StructField("checksum", StringType(), False),
     StructField("source", StringType(), False),
-    StructField("validity", StructType([
-        StructField("from", StringType(), False),
-        StructField("to", StringType(), False)
-    ]), True)
 ])
 
 offers_schema = StructType([
     StructField("name", StringType(), False),
-    StructField("price", FloatType(), False),
+    StructField("price", FloatType(), True),
     StructField("quantity", FloatType(), True),
+    StructField("count", FloatType(), True),
     StructField("uom", StringType(), True),
     StructField("category", StringType(), True),
     StructField("type", StringType(), True),
+    StructField("notes", StringType(), True),
     StructField("source", StringType(), False),
     StructField("flyer_checksum", StringType(), False),
     StructField("validity_from", StringType(), False),
@@ -68,13 +66,20 @@ offers_schema = StructType([
 
 # --- Gemini structured output schema ---
 
-class Offer(BaseModel):
+class Product(BaseModel):
     name: str
-    price: float
+    price: Optional[float] = None
     quantity: Optional[float] = None
+    count: Optional[float] = None
     uom: Optional[str] = None
     category: Optional[str] = None
     type: Optional[str] = None
+    notes: Optional[str] = None
+
+class Flyer(BaseModel):
+    validity_from: str
+    validity_to: str
+    offers: list[Product]
 
 # --- Utility functions ---
 
@@ -124,7 +129,7 @@ def gemini_request(file_path):
     config = types.GenerateContentConfig(
         temperature = 0,
         response_mime_type = "application/json",
-        response_schema = list[Offer],
+        response_schema = Flyer,
         max_output_tokens = 65536, # gemini flash max limit
         thinking_config = genai.types.ThinkingConfig(thinking_budget = 0) # disable thinking
     )
@@ -159,22 +164,20 @@ def process_pdf(pdf_iter):
                     gemini_response = gemini_request(file_path)
                     end_perf_counter = time.perf_counter()
                     elapsed_perf_time = end_perf_counter - start_perf_counter
-                    print(f"Gemini request ended in: {elapsed_perf_time} seconds")
-                    print(gemini_response.text)
-
-                    offers = gemini_response.parsed
-                
+                    flyer = gemini_response.parsed
+                    validity_from = normalize_date(flyer.validity_from, "first")
+                    validity_to = normalize_date(flyer.validity_to, "last")
                 except Exception as e:
                     print(f"[Gemini error] {e}")
                     continue
 
-                for offer in offers:
+                for offer in flyer.offers:
                     offer_dict = offer.model_dump()
                     offer_dict.update({
                         "source": row["source"],
                         "flyer_checksum": checksum,
-                        "validity_from": row["validity"]["from"],
-                        "validity_to": row["validity"]["to"]
+                        "validity_from": validity_from,
+                        "validity_to": validity_to
                     })
                     rows_out.append(offer_dict)
                 
@@ -186,15 +189,16 @@ def process_pdf(pdf_iter):
                     "checksum": checksum,
                     "filename": row["filename"],
                     "source": row["source"],
-                    "validity_from": row["validity"]["from"],
-                    "validity_to": row["validity"]["to"],
-                    "offers_count": len(offers),
+                    "validity_from": validity_from,
+                    "validity_to": validity_to,
+                    "offers_count": len(flyer.offers),
                     "ai_model": gemini_response.model_version,
                     "ai_input_tokens": gemini_response.usage_metadata.prompt_token_count,
                     "ai_cached_tokens": gemini_response.usage_metadata.cached_content_token_count,
                     "ai_output_tokens": gemini_response.usage_metadata.candidates_token_count,
                     "ai_finish_reason": gemini_response.candidates[0].finish_message,
-                    "processed_at": now_strict_date_time
+                    "processed_at": now_strict_date_time,
+                    "processing_time": elapsed_perf_time
                 }
 
                 try:
