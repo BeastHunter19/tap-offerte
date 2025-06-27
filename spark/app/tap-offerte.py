@@ -164,6 +164,14 @@ def process_pdf(pdf_iter):
                     gemini_response = gemini_request(file_path)
                     end_perf_counter = time.perf_counter()
                     elapsed_perf_time = end_perf_counter - start_perf_counter
+                    # --- DEBUG ---
+                    print(f"--- GEMINI OUTPUT ---")
+                    print(f"Request took: {elapsed_perf_time:.6f} seconds)")
+                    print("Feedback: ", gemini_response.prompt_feedback)
+                    print("Finish reason: ", gemini_response.candidates[0].finish_reason)
+                    print("Usage metadata: ", gemini_response.usage_metadata)
+                    print("Offers extracted: ", len(gemini_response.parsed.offers))
+
                     flyer = gemini_response.parsed
                     validity_from = normalize_date(flyer.validity_from, "first")
                     validity_to = normalize_date(flyer.validity_to, "last")
