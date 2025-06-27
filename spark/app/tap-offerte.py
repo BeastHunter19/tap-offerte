@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from typing import Optional
 from elasticsearch import Elasticsearch
 import pandas as pd
+from dateparser import parse
 
 # --- Configuration ---
 
@@ -76,6 +77,34 @@ class Offer(BaseModel):
     type: Optional[str] = None
 
 # --- Utility functions ---
+
+def normalize_date(date, day_of_month = "current"):
+    if not isinstance(date, str) or not date.strip():
+        print(f"The given date is not a valid string: '{date}'")
+        return None
+    
+    try:
+        settings = {
+            "PREFER_DAY_OF_MONTH": day_of_month,
+            "PREFER_DATES_FROM": "future",
+            "REQUIRE_PARTS": ["month", "year"]
+        }
+        parsed_date = parse(
+            date,
+            settings = settings
+        )
+
+        if parsed_date:
+            if parsed_date.tzinfo is None:
+                return parsed_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            else:
+                return parsed_date.isoformat(timespec = "milliseconds")
+        else:
+            print(f"Unable to parse the given date '{date}' because of unrecognised format")
+            return None
+    except Exception as e:
+        print(f"Unexpected error during parsing of '{date}': {e}")
+        return None
 
 def download_pdf(message):
     file_path = shutil.copy(SHARED_FOLDER + message.url, PDF_DOWNLOAD_PATH)
