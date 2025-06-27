@@ -3,18 +3,27 @@ Dovresti esaminare il documento e darmi una lista di tutti i prodotti al suo int
 Fornisci la risposta come array JSON in cui ogni elemento segue la struttura fornita.
 Assicurati di dare solo prodotti che appaiano visivamente nell'immagine, senza basarti
 in alcun modo su risposte precedenti o fonti esterne nel formulare la tua risposta.
+Inoltre, assicurati di non saltare nessuna pagina e di esaminare tutti i pezzi di testo nel volantino
+per non saltare nessuna possibile offerta.
 Se ci sono offerte che includono due o più tipi diversi di prodotti raggruppati
 cerca di separarli in elementi separati nell'output.
-Nella tua risposta includi le seguenti cose:
+Nella tua risposta includi la data di inizio e fine validità delle offerte e per ogni offerta
+le seguenti cose:
 - il nome del prodotto
 - il prezzo
-- la quantità
+- la quantità per singolo oggetto
+- il numero di oggetti
 - l'unità di misura (uom) in cui la quantità è misurata
 - la categoria di vendita del prodotto
 - il tipo generico di prodotto
+- eventuali note (ad esempio specifica se è richiesta una carta fedeltà per usufruire dell'offerta)
 Alcuni esempi per il tipo di prodotto (nome -> tipo)
 - Parmigiano Reggiano D.O.P. -> Parmigiano
 - Levissima Acqua naturale -> Acqua naturale
 - Ragusa Latte Mozzarella tris -> Mozzarella
 - Gran Terre LiberaMente tacchino arrosto -> Tacchino
 - Casa Milo Pasta fresca vari tipi -> Pasta
+Inoltre ecco un esempio di come gestire quantità e numero di oggetti:
+supponi di avere un'offerta del tipo "acqua 6x1,5 lt", in questo caso la quantità della
+singola bottiglia sarà 1.5, l'unità di misura "lt" e il numero di oggetti (in questo caso
+di bottiglie) sarà 6
