@@ -4,19 +4,15 @@
       "name": { "type": "text" },
       "price": { "type": "float" },
       "quantity": { "type": "float" },
+      "count": { "type": "float" },
       "uom": { "type": "keyword" },
       "category": { "type": "keyword" },
       "type": { "type": "keyword" },
+      "notes": { "type": "text" },
       "source": { "type": "keyword" },
       "flyer_checksum": { "type": "keyword" },
-      "validity_from": {
-        "type": "date",
-        "format": "dd-MM-yyyy"
-      },
-      "validity_to": {
-        "type": "date",
-        "format": "dd-MM-yyyy"
-      }
+      "validity_from": { "type": "date" },
+      "validity_to": { "type": "date" }
     }
   }
 }

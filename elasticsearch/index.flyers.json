@@ -4,14 +4,8 @@
       "checksum": { "type": "keyword" },
       "filename": { "type": "keyword" },
       "source": { "type": "keyword" },
-      "validity_from": {
-        "type": "date",
-        "format": "dd-MM-yyyy"
-      },
-      "validity_to": {
-        "type": "date",
-        "format": "dd-MM-yyyy"
-      },
+      "validity_from": { "type": "date" },
+      "validity_to": { "type": "date" },
       "offers_count": { "type": "integer" },
       "ai_model": { "type": "keyword" },
       "ai_input_tokens": { "type": "integer" },
@@ -21,7 +15,8 @@
       "processed_at": {
         "type": "date",
         "format": "strict_date_time||epoch_millis"
-      }
+      },
+      "processing_time": { "type": "double" }
     }
   }
 }
