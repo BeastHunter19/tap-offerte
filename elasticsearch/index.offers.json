@@ -4,6 +4,7 @@
       "name": { "type": "text" },
       "price": { "type": "float" },
       "quantity": { "type": "float" },
+      "total_quantity": { "type": "float" },
       "count": { "type": "float" },
       "uom": { "type": "keyword" },
       "category": { "type": "keyword" },

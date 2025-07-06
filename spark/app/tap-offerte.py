@@ -53,6 +53,7 @@ offers_schema = StructType([
     StructField("name", StringType(), False),
     StructField("price", FloatType(), True),
     StructField("quantity", FloatType(), True),
+    StructField("total_quantity", FloatType(), True),
     StructField("count", FloatType(), True),
     StructField("uom", StringType(), True),
     StructField("category", StringType(), True),
@@ -70,11 +71,14 @@ class Product(BaseModel):
     name: str
     price: Optional[float] = None
     quantity: Optional[float] = None
+    total_quantity: Optional[float] = None
     count: Optional[float] = None
     uom: Optional[str] = None
     category: Optional[str] = None
     type: Optional[str] = None
     notes: Optional[str] = None
+    validity_from: Optional[str] = None
+    validity_to: Optional[str] = None
 
 class Flyer(BaseModel):
     validity_from: str
@@ -119,6 +123,16 @@ def download_pdf(message):
         return ""
     return file_path
 
+SYSTEM_INSTRUCTION = """
+Sei un estrattore di offerte da volantini promozionali.
+Il tuo compito è analizzare il PDF fornito, che è in italiano,
+e estrarre ogni singola offerta trovata. Per ogni offerta,
+genera un oggetto JSON con i nomi dei campi in inglese.
+Assicurati di estrarre la lista completa di tutte le promozioni
+e sconti presenti nel volantino, senza tralasciare alcuna offerta.
+La completezza dell'estrazione è cruciale.
+"""
+
 def gemini_request(file_path):
     client = genai.Client(api_key = GOOGLE_API_KEY)
     model = "gemini-2.5-flash"
@@ -131,7 +145,8 @@ def gemini_request(file_path):
         response_mime_type = "application/json",
         response_schema = Flyer,
         max_output_tokens = 65536, # gemini flash max limit
-        thinking_config = genai.types.ThinkingConfig(thinking_budget = 0) # disable thinking
+        thinking_config = genai.types.ThinkingConfig(thinking_budget = 0), # disable thinking
+        system_instruction = SYSTEM_INSTRUCTION
     )
 
     response = client.models.generate_content(
@@ -173,8 +188,8 @@ def process_pdf(pdf_iter):
                     print("Offers extracted: ", len(gemini_response.parsed.offers))
 
                     flyer = gemini_response.parsed
-                    validity_from = normalize_date(flyer.validity_from, "first")
-                    validity_to = normalize_date(flyer.validity_to, "last")
+                    flyer_validity_from = normalize_date(flyer.validity_from, "first")
+                    flyer_validity_to = normalize_date(flyer.validity_to, "last")
                 except Exception as e:
                     print(f"[Gemini error] {e}")
                     continue
@@ -184,8 +199,10 @@ def process_pdf(pdf_iter):
                     offer_dict.update({
                         "source": row["source"],
                         "flyer_checksum": checksum,
-                        "validity_from": validity_from,
-                        "validity_to": validity_to
+                        "validity_from": flyer_validity_from if offer.validity_from is None \
+                            else normalize_date(offer.validity_from, "first"),
+                        "validity_to": flyer_validity_from if offer.validity_from is None \
+                            else normalize_date(offer.validity_from, "last")
                     })
                     rows_out.append(offer_dict)
                 
@@ -197,8 +214,8 @@ def process_pdf(pdf_iter):
                     "checksum": checksum,
                     "filename": row["filename"],
                     "source": row["source"],
-                    "validity_from": validity_from,
-                    "validity_to": validity_to,
+                    "validity_from": flyer_validity_from,
+                    "validity_to": flyer_validity_to,
                     "offers_count": len(flyer.offers),
                     "ai_model": gemini_response.model_version,
                     "ai_input_tokens": gemini_response.usage_metadata.prompt_token_count,

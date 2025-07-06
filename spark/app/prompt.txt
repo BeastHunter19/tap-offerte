@@ -1,29 +1,259 @@
-Il pdf fornito è un volantino promozionale di un supermercato e include offerte su vari prodotti.
-Dovresti esaminare il documento e darmi una lista di tutti i prodotti al suo interno con i relativi prezzi.
-Fornisci la risposta come array JSON in cui ogni elemento segue la struttura fornita.
-Assicurati di dare solo prodotti che appaiano visivamente nell'immagine, senza basarti
-in alcun modo su risposte precedenti o fonti esterne nel formulare la tua risposta.
-Inoltre, assicurati di non saltare nessuna pagina e di esaminare tutti i pezzi di testo nel volantino
-per non saltare nessuna possibile offerta.
-Se ci sono offerte che includono due o più tipi diversi di prodotti raggruppati
-cerca di separarli in elementi separati nell'output.
-Nella tua risposta includi la data di inizio e fine validità delle offerte e per ogni offerta
-le seguenti cose:
-- il nome del prodotto
-- il prezzo
-- la quantità per singolo oggetto
-- il numero di oggetti
-- l'unità di misura (uom) in cui la quantità è misurata
-- la categoria di vendita del prodotto
-- il tipo generico di prodotto
-- eventuali note (ad esempio specifica se è richiesta una carta fedeltà per usufruire dell'offerta)
-Alcuni esempi per il tipo di prodotto (nome -> tipo)
-- Parmigiano Reggiano D.O.P. -> Parmigiano
-- Levissima Acqua naturale -> Acqua naturale
-- Ragusa Latte Mozzarella tris -> Mozzarella
-- Gran Terre LiberaMente tacchino arrosto -> Tacchino
-- Casa Milo Pasta fresca vari tipi -> Pasta
-Inoltre ecco un esempio di come gestire quantità e numero di oggetti:
-supponi di avere un'offerta del tipo "acqua 6x1,5 lt", in questo caso la quantità della
-singola bottiglia sarà 1.5, l'unità di misura "lt" e il numero di oggetti (in questo caso
-di bottiglie) sarà 6
+Di seguito sono riportate le istruzioni dettagliate e gli esempi per l'estrazione delle offerte. Implementa quanto segue sul PDF del volantino che ti invierò.
+
+**Informazioni Generali del Volantino da Estrarre (con nomi dei campi JSON corrispondenti):**
+
+* **validity_from**: La data di inizio validità PRINCIPALE dell'intero volantino, in formato "YYYY-MM-DD". Cerca questa informazione principalmente sulla copertina o nelle sezioni introduttive del volantino. Riportala SOLO SE CHIARAMENTE INDICATA COME VALIDITÀ GENERALE DEL VOLANTINO.
+* **validity_to**: La data di fine validità PRINCIPALE dell'intero volantino, in formato "YYYY-MM-DD". Cerca questa informazione principalmente sulla copertina o nelle sezioni introduttive del volantino. Riportala SOLO SE CHIARAMENTE INDICATA COME VALIDITÀ GENERALE DEL VOLANTINO.
+* **offers**: L'elenco delle offerte estratte dal volantino.
+
+**Informazioni da Estrarre per Ogni Offerta (con nomi dei campi JSON corrispondenti e descrizione in italiano):**
+
+* **name**: Il nome completo del prodotto in offerta (es. "Latte Fresco Intero", "Biscotti Integrali"). **Attenzione: se un'offerta si riferisce a più prodotti distinti (es. "prosciutto cotto / crudo"), crea un oggetto JSON separato per ogni prodotto.**
+* **price**: Il prezzo finale o scontato del prodotto per l'offerta.
+* **quantity**: La quantità specifica di prodotto per una singola unità o porzione (es. "100" per 100g, "500" per 500ml). Se la quantità indicata nel testo è già la quantità totale per tutte le unità (`count`), allora `quantity` sarà uguale a `total_quantity`.
+* **total_quantity**: La quantità totale aggregata del prodotto in base all'offerta, che sia peso, volume, ecc. (es. per "mozzarella 3x100g", sarà 300; per "tranci di pizza 3pz, 1.2kg", sarà 1.2; per una singola confezione da 1L, sarà 1). Questo campo è cruciale per distinguere le offerte.
+* **count**: Il numero di singole unità o porzioni contenute nella confezione o pacchetto in offerta (es. "3" per "mozzarella 3x100g"; "6" per "birra 6x33cl"; "1" per una singola confezione di pasta).
+* **uom**: L'unità di misura del prodotto (stringa, es. "kg", "L", "g", "ml", "pezzi", "confezione", "vasetto").
+* **category**: La categoria merceologica più ampia del prodotto (es. "Latticini", "Bevande", "Carne", "Dolci", "Igiene Casa").
+* **type**: Il **tipo generico di prodotto** (es. "mozzarella", "latte", "pasta", "birra", "yogurt", "prosciutto cotto"). Questa non è la categoria dell'offerta, ma la sua classificazione più specifica.
+* **notes**: Eventuali note aggiuntive o dettagli importanti sull'offerta (es. "valido solo con carta fedeltà", "fino ad esaurimento scorte", "offerta valida solo da app").
+* **validity_from**: La data di inizio validità di QUESTA SPECIFICA offerta, in formato "YYYY-MM-DD". Riportala SOLO E UNICAMENTE se è chiaramente e direttamente associata a QUESTA offerta. NON INFERIRE date da altre parti del volantino (es. date generali del volantino, date di altre offerte). Se non è esplicitamente presente PER QUESTA OFFERTA, il valore DEVE essere `null`.
+* **validity_to**: La data di fine validità di QUESTA SPECIFICA offerta, in formato "YYYY-MM-DD". Riportala SOLO E UNICAMENTE se è chiaramente e direttamente associata a QUESTA offerta. NON INFERIRE date da altre parti del volantino (es. date generali del volantino, date di altre offerte). Se non è esplicitamente presente PER QUESTA OFFERTA, il valore DEVE essere `null`.
+
+---
+
+**Esempio di Offerta 1: Sconto Percentuale su Prodotto Singolo**
+
+Testo/Contesto nel Volantino: "Passata di Pomodoro 700g - SCONTO 30% - da 1,50€ a 1,05€"
+
+Output JSON:
+```json
+{
+  "name": "Passata di pomodoro",
+  "price": 1.05,
+  "quantity": 700,
+  "total_quantity": 700,
+  "count": 1,
+  "uom": "g",
+  "category": "Dispensa",
+  "type": "passata di pomodoro",
+  "notes": null,
+  "validity_from": null,
+  "validity_to": null
+}
+
+**Esempio di Offerta 2: Prezzo Speciale Senza Sconto % Esplicito e con data esplicita**
+
+Testo/Contesto nel Volantino: "Pannolini Baby Comfort Maxi - Prezzo Speciale 12.99€ - Confezione da 48 pezzi - Offerta valida dal 28/06 al 30/06"
+
+Output JSON:
+```json
+{
+  "name": "Pannolini baby comfort maxi",
+  "price": 12.99,
+  "quantity": null,
+  "total_quantity": null,
+  "count": 48,
+  "uom": "pezzi",
+  "category": "Igiene Persona",
+  "type": "pannolini",
+  "notes": null,
+  "validity_from": "2025-06-28",
+  "validity_to": "2025-06-30"
+}
+
+**Esempio di Offerta 3: Offerta "3x2" (Prendi 3, Paghi 2) - Notare come total_quantity rifletta la quantità di prodotto finale ricevuta**
+
+Testo/Contesto nel Volantino: "Yogurt Cremoso Frutta 80 g - 3x2 (prendi 3, paghi 2) - €1,20 a vasetto"
+
+Output JSON:
+```json
+{
+  "name": "Yogurt cremoso frutta",
+  "price": 2.40,
+  "quantity": 80,
+  "total_quantity": 240,
+  "count": 3,
+  "uom": "vasetto",
+  "category": "Latticini",
+  "type": "yogurt",
+  "notes": "Acquista 3, ne paghi 2",
+  "validity_from": null,
+  "validity_to": null
+}
+
+**Esempio di Offerta 4: Offerta con Carta Fedeltà**
+
+Testo/Contesto nel Volantino: "Caffè Macinato 250g - 2.80€ (con carta fidelity) - Prezzo normale 3.50€"
+
+Output JSON:
+```json
+{
+  "name": "Caffè macinato",
+  "price": 2.80,
+  "quantity": 250,
+  "total_quantity": 250,
+  "count": 1,
+  "uom": "g",
+  "category": "Bevande",
+  "type": "caffè macinato",
+  "notes": "Valido solo con carta fedeltà",
+  "validity_from": null,
+  "validity_to": null
+}
+
+**Esempio di Offerta 5: Prodotti Multipli nella Stessa Offerta (da separare) e prezzo al kg**
+
+Testo/Contesto nel Volantino: "San Daniele Prosciutto Cotto / Crudo - 12,90€/kg"
+
+Output JSON:
+```json
+{
+  "name": "Prosciutto cotto san Daniele",
+  "price": 12.90,
+  "quantity": 1,
+  "total_quantity": 1,
+  "count": null,
+  "uom": "kg",
+  "category": "Salumi",
+  "type": "prosciutto cotto",
+  "notes": null,
+  "validity_from": null,
+  "validity_to": null
+},
+{
+  "name": "Prosciutto crudo san Daniele",
+  "price": 12.90,
+  "quantity": 1,
+  "total_quantity": 1,
+  "count": null,
+  "uom": "kg",
+  "category": "Salumi",
+  "type": "prosciutto crudo",
+  "notes": null,
+  "validity_from": null,
+  "validity_to": null
+}
+
+**Esempio di Offerta 6: Prodotto con Unità Multiple nella Confezione (es. "3x100g")**
+
+Testo/Contesto nel Volantino: "Mozzarella Santa Lucia 3x100g - 2,89€ - Valida dal 24 al 27 giugno"
+
+Output JSON:
+```json
+{
+  "name": "Mozzarella Santa Lucia",
+  "price": 2.89,
+  "quantity": 100,
+  "total_quantity": 300,
+  "count": 3,
+  "uom": "g",
+  "category": "Latticini",
+  "type": "mozzarella",
+  "notes": null,
+  "validity_from": "2025-06-24",
+  "validity_to": "2025-06-27"
+}
+
+**Esempio di Offerta 7: Prodotto con Quantità Totale Esplicita (es. "3pz, 1.2kg")**
+
+Testo/Contesto nel Volantino: "Tranci di Pizza Surgelata 3pz, 1.2kg - €4,99"
+
+Output JSON:
+```json
+{
+  "name": "Tranci di Pizza Surgelata",
+  "price": 4.99,
+  "quantity": 0.4,
+  "total_quantity": 1.2,
+  "count": 3,
+  "uom": "kg",
+  "category": "Surgelati",
+  "type": "pizza",
+  "notes": null,
+  "validity_from": null,
+  "validity_to": null
+}
+
+**Esempio di Offerta 8: Prodotti Multipli complesso**
+
+Testo/Contesto nel Volantino: "NUGGETS/COTOLETTEY/BURGER SOIA/ALLE VERDURE 200 g 2,29 cad. - al kg Euro 11,45"
+Inoltre in questo caso dovrai usare il contesto visivo: nel volantino, accanto a questo testo, si vedono quattro confezioni con riportati
+i nomi dei prodotti: Cotolette soia, nuggets soia, burger soia, burger alle verdure. Quindi anche se dal testo potrebbe sembrare che ci sia
+un'offerta per nuggets o cotolette alle verdure, in realtà non è così. Inoltre ogni confezione riporta un "x2" e anche "2x100 g" che possono
+farti capire che il "count" del prodotto è 2 e la "quantity" è 100, anche se non si evince dal testo sopra riportato.
+
+Output JSON:
+```json
+{
+  "name": "Cotolette soia",
+  "price": 2.29,
+  "quantity": 100,
+  "total_quantity": 200,
+  "count": 2,
+  "uom": "g",
+  "category": "Surgelati",
+  "type": "cotolette di soia",
+  "notes": null,
+  "validity_from": null,
+  "validity_to": null
+},
+{
+  "name": "Nuggets soia",
+  "price": 2.29,
+  "quantity": 100,
+  "total_quantity": 200,
+  "count": 2,
+  "uom": "g",
+  "category": "Surgelati",
+  "type": "nuggets di soia",
+  "notes": null,
+  "validity_from": null,
+  "validity_to": null
+},
+{
+  "name": "Burger soia",
+  "price": 2.29,
+  "quantity": 100,
+  "total_quantity": 200,
+  "count": 2,
+  "uom": "g",
+  "category": "Surgelati",
+  "type": "burger di soia",
+  "notes": null,
+  "validity_from": null,
+  "validity_to": null
+},
+{
+  "name": "Burger alle verdure",
+  "price": 2.29,
+  "quantity": 100,
+  "total_quantity": 200,
+  "count": 2,
+  "uom": "g",
+  "category": "Surgelati",
+  "type": "burger alle verdure",
+  "notes": null,
+  "validity_from": null,
+  "validity_to": null
+}
+
+**Esempio di Offerta 8: Prodotto con prezzo al kg e quantità**
+
+Testo/Contesto nel Volantino: "Ragusa Latte Provola (circa 500 g) al kg €13,90"
+
+Output JSON:
+```json
+{
+  "name": "Ragusa latte provola",
+  "price": 13.9,
+  "quantity": 1,
+  "total_quantity": 1,
+  "count": null,
+  "uom": "kg",
+  "category": "Latticini",
+  "type": "provola",
+  "notes": "Circa 500g",
+  "validity_from": null,
+  "validity_to": null
+}
