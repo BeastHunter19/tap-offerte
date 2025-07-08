@@ -164,9 +164,6 @@ def process_pdf(pdf_iter):
         for _, row in pdf_rows.iterrows():
             try:
                 checksum = row["checksum"]
-                if es.exists(index = "flyers", id = checksum):
-                    print(f"File {row['filename']} with checksum {checksum} has already been processed.")
-                    continue
                 
                 file_path = download_pdf(row)
                 if not file_path:

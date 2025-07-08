@@ -1,6 +1,6 @@
 services:
   logstash:
-    image: docker.elastic.co/logstash/logstash:9.0.1
+    build: ./logstash
     hostname: logstash
     volumes:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
