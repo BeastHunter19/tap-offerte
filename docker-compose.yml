@@ -57,7 +57,8 @@ services:
       - GOOGLE_API_KEY_FILE=/run/secrets/gemini_api_key
       - KAFKA_SERVER=broker:9092
       - KAFKA_TOPIC=pdf-metadata
-      - ELASTIC_HOST=http://elasticsearch:9200
+      - ELASTIC_HOST=elasticsearch
+      - ELASTIC_PORT=9200
       - ELASTIC_FLYERS_INDEX=flyers
       - ELASTIC_OFFERS_INDEX=offers
       - GEMINI_PROMPT_FILE=/opt/tap/prompt.txt

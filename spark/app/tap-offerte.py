@@ -17,6 +17,7 @@ from dateparser import parse
 KAFKA_SERVER = os.getenv("KAFKA_SERVER")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC")
 ELASTIC_HOST = os.getenv("ELASTIC_HOST")
+ELASTIC_PORT = os.getenv("ELASTIC_PORT")
 ELASTIC_FLYERS_INDEX = os.getenv("ELASTIC_FLYERS_INDEX")
 ELASTIC_OFFERS_INDEX = os.getenv("ELASTIC_OFFERS_INDEX")
 PDF_DOWNLOAD_PATH = "/tmp/"
@@ -30,8 +31,8 @@ with open(GOOGLE_API_KEY_FILE, "r") as google_api_key_file:
 # --- Spark setup ---
 
 spark_conf = SparkConf() \
-    .set("es.nodes", "elasticsearch") \
-    .set("es.port", "9200")
+    .set("es.nodes", ELASTIC_HOST) \
+    .set("es.port", ELASTIC_PORT)
 
 spark = SparkSession.builder \
     .appName("tap-offerte") \
@@ -157,7 +158,8 @@ def gemini_request(file_path):
     return response
 
 def process_pdf(pdf_iter):
-    es = Elasticsearch(hosts=[ELASTIC_HOST])
+    es_endpoint = f"http://{ELASTIC_HOST}:{ELASTIC_PORT}"
+    es = Elasticsearch(hosts=[es_endpoint])
 
     for pdf_rows in pdf_iter:
         rows_out = []
