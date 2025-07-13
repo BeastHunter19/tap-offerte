@@ -4,19 +4,19 @@
       "checksum": { "type": "keyword" },
       "filename": { "type": "keyword" },
       "source": { "type": "keyword" },
+      "url": { "type": "keyword" },
+      "chunk_total": { "type": "integer" },
       "validity_from": { "type": "date" },
       "validity_to": { "type": "date" },
       "offers_count": { "type": "integer" },
-      "ai_model": { "type": "keyword" },
       "ai_input_tokens": { "type": "integer" },
       "ai_cached_tokens": { "type": "integer" },
       "ai_output_tokens": { "type": "integer" },
-      "ai_finish_reason": { "type": "keyword" },
+      "processing_time_seconds": { "type": "double" },
       "processed_at": {
         "type": "date",
         "format": "strict_date_time||epoch_millis"
-      },
-      "processing_time": { "type": "double" }
+      }
     }
   }
 }
