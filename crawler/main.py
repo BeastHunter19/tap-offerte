@@ -1,22 +1,29 @@
-import hashlib, json, os, socket, shutil
-from time import sleep
+import hashlib
+import json
+import os
+import shutil
+import socket
 
 PDF_PATH = "/tmp/"
 SHARED_FOLDER = "/data/"
 LOGSTASH_HOST = os.getenv("LOGSTASH_HOST", "localhost")
 LOGSTASH_PORT = int(os.getenv("LOGSTASH_PORT", 5044))
 
+
 def sha256sum(filepath):
     with open(filepath, "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()
+
 
 def send_to_logstash(payload):
     print("Connecting to:", LOGSTASH_HOST, LOGSTASH_PORT)
     with socket.create_connection((LOGSTASH_HOST, LOGSTASH_PORT)) as sock:
         sock.sendall((json.dumps(payload) + "\n").encode("utf-8"))
 
+
 def simulate_download(file_path):
     shutil.copy(file_path, SHARED_FOLDER)
+
 
 def main():
     if not os.path.exists(PDF_PATH):
@@ -45,7 +52,7 @@ def main():
                             "filename": filename,
                             "url": filename,
                             "checksum": checksum,
-                            "source": supermarket_name
+                            "source": supermarket_name,
                         }
                         send_to_logstash(payload)
                     except Exception as e:
@@ -54,6 +61,7 @@ def main():
                     print(f"  - Skipping non-PDF file: {filename}")
         else:
             print(f"Skipping non-directory item in base folder: {item}")
+
 
 if __name__ == "__main__":
     main()
