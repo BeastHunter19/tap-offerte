@@ -119,11 +119,25 @@ services:
     environment:
       - ENCRYPTION_KEY_FILE=/run/secrets/kibana_saved_objects_encryption_key
     entrypoint: ["/usr/local/bin/start-kibana.sh"]
+  embeddings:
+    image: michaelf34/infinity:latest-cpu
+    hostname: embeddings
+    container_name: embeddings
+    ports:
+      - "8100:8000"
+    volumes:
+      - model-cache:/app/.cache
+    command: >
+      v2
+      --model-id BAAI/bge-m3
+      --port 8000
+      --engine optimum
 
 volumes:
   shared-storage:
   sparklibs:
   elastic-data:
+  model-cache:
 
 secrets:
   gemini_api_key:
