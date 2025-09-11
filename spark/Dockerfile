@@ -24,6 +24,6 @@ RUN ln -sf /usr/bin/python3.9 /usr/bin/python && \
 
 # Reinstall required Python packages using Python 3.9
 RUN pip install --upgrade pip && \
-    pip install google-genai dateparser pypdf pandas pyarrow
+    pip install google-genai dateparser pypdf pandas pyarrow httpx httpx-retries
 
 USER spark

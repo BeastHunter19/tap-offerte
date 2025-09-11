@@ -67,6 +67,7 @@ services:
       - GEMINI_SYSTEM_PROMPT_FILE=/opt/tap/system-prompt.txt
       - SPARK_PARALLELISM=10
       - SPARK_CHECKPOINTS_LOCATION=/tmp/checkpoints/
+      - EMBEDDINGS_URL=http://embeddings:8000/embeddings
     volumes:
       - sparklibs:/opt/spark-ivy-cache
       - ./spark/app:/opt/tap

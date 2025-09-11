@@ -7,6 +7,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
+import httpx
 import pandas as pd
 from dateparser import parse
 from google import genai
@@ -15,6 +16,7 @@ from google.genai.types import (
     GenerateContentResponse,
     ThinkingConfig,
 )
+from httpx_retries import Retry, RetryTransport
 from pydantic import BaseModel
 from pypdf import PdfReader, PdfWriter
 from pyspark.conf import SparkConf
@@ -56,6 +58,7 @@ GEMINI_SYSTEM_PROMPT_FILE = os.getenv("GEMINI_SYSTEM_PROMPT_FILE")
 GOOGLE_API_KEY_FILE = os.getenv("GOOGLE_API_KEY_FILE")
 SPARK_PARALLELISM = int(os.getenv("SPARK_PARALLELISM"))
 SPARK_CHECKPOINTS_LOCATION = os.getenv("SPARK_CHECKPOINTS_LOCATION")
+EMBEDDINGS_URL = os.getenv("EMBEDDINGS_URL")
 
 with open(GOOGLE_API_KEY_FILE, "r") as google_api_key_file:
     GOOGLE_API_KEY = google_api_key_file.read()
@@ -88,6 +91,7 @@ offers_schema = StructType(
         StructField("notes", StringType(), True),
         StructField("validity_from", StringType(), True),
         StructField("validity_to", StringType(), True),
+        StructField("embeddings", ArrayType(DoubleType()), True),
     ]
 )
 
@@ -163,6 +167,26 @@ class Flyer(BaseModel):
 
 
 # --- Utility functions ---
+
+
+def convert_numpy_to_python(obj):
+    """Recursively convert numpy types to native Python types"""
+    import numpy as np
+
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, dict):
+        return {key: convert_numpy_to_python(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_to_python(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_numpy_to_python(item) for item in obj)
+    else:
+        return obj
 
 
 def normalize_date(date: str, day_of_month: str = "current") -> Optional[str]:
@@ -292,6 +316,25 @@ def gemini_request(file_path: str) -> GenerateContentResponse:
             os.remove(file_path)
 
 
+def get_embeddings(texts: List[str]) -> List[List[float]]:
+    if (
+        not isinstance(texts, list)
+        or not texts
+        or not all(isinstance(t, str) and t.strip() for t in texts)
+    ):
+        return []
+    try:
+        retry = Retry(total=5, backoff_factor=0.5)
+        transport = RetryTransport(retry=retry)
+        with httpx.Client(transport=transport) as client:
+            body = {"input": texts, "model": "BAAI/bge-m3"}
+            response = client.post(EMBEDDINGS_URL, json=body).raise_for_status().json()
+            return [embedding.get("embedding") for embedding in response.get("data")]
+    except Exception as e:
+        print(f"Error generating embeddings: {e}")
+        return [[] for _ in texts]
+
+
 @udf(returnType=gemini_schema)
 def process_chunk(chunk_path: str) -> Dict[str, Any]:
     start_perf_counter = time.perf_counter()
@@ -305,6 +348,10 @@ def process_chunk(chunk_path: str) -> Dict[str, Any]:
 
     offers_data = [offer.model_dump() for offer in flyer.offers]
     offers_count = len(offers_data)
+
+    embeddings = get_embeddings([offer.name for offer in flyer.offers])
+    for offer, embedding in zip(offers_data, embeddings):
+        offer["embeddings"] = embedding if embedding else None
 
     now = datetime.now(timezone.utc)
     now_strict_date_time = now.isoformat().replace("+00:00", "Z")
@@ -366,7 +413,11 @@ def aggregate_pdf(
         chunks_seen = set()
 
     # merge all pandas microbatches
-    chunks = pd.concat(pd_iterator, ignore_index=True)
+    chunks = [df for df in pd_iterator if not df.empty and not df.isna().all().all()]
+    if chunks:
+        chunks = pd.concat(chunks, ignore_index=True)
+    else:
+        chunks = pd.DataFrame()
 
     for _, chunk in chunks.iterrows():
         chunk_n = chunk.chunk_n
@@ -395,6 +446,10 @@ def aggregate_pdf(
         # Only output a new pdf row if all chunks have been processed
         if len(chunks_seen) == chunk.chunk_total:
             checksum = key[0]
+
+            # Convert any numpy types to native Python types
+            clean_offers_data = convert_numpy_to_python(offers_data)
+
             pdf_data = {
                 "checksum": [checksum],
                 "url": [chunk.url],
@@ -414,7 +469,7 @@ def aggregate_pdf(
                     int(ai_output_tokens) if pd.notna(ai_output_tokens) else 0
                 ],
                 "processing_time_seconds": [processing_time_seconds],
-                "offers_data": [offers_data],
+                "offers_data": [clean_offers_data],
             }
             # Delete state because the pdf is complete
             state.remove()
@@ -439,6 +494,7 @@ def aggregate_pdf(
             yield pd.DataFrame(pdf_data)
 
     # If after processing all chunks there are still missing ones just update the state
+    clean_offers_data = convert_numpy_to_python(offers_data)
     state.update(
         (
             validity_from,
@@ -448,7 +504,7 @@ def aggregate_pdf(
             ai_cached_tokens,
             ai_output_tokens,
             processing_time_seconds,
-            offers_data,
+            clean_offers_data,
             list(chunks_seen),
         )
     )
@@ -482,6 +538,7 @@ def write_micro_batch_to_elastic(batch_df, batch_id):
             coalesce(col("offer.validity_to"), col("flyer_validity_to")).alias(
                 "validity_to"
             ),
+            col("offer.embeddings").alias("embeddings"),
         )
     )
 

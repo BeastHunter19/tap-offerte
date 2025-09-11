@@ -13,7 +13,11 @@
       "source": { "type": "keyword" },
       "flyer_checksum": { "type": "keyword" },
       "validity_from": { "type": "date" },
-      "validity_to": { "type": "date" }
+      "validity_to": { "type": "date" },
+      "embeddings": {
+        "type": "dense_vector",
+        "index": true
+      }
     }
   }
 }
