@@ -11,11 +11,6 @@ import httpx
 import pandas as pd
 from dateparser import parse
 from google import genai
-from google.genai.types import (
-    GenerateContentConfig,
-    GenerateContentResponse,
-    ThinkingConfig,
-)
 from httpx_retries import Retry, RetryTransport
 from pydantic import BaseModel
 from pypdf import PdfReader, PdfWriter
@@ -292,18 +287,27 @@ def download_and_split_pdf(url: str, expected_checksum: str) -> List[str]:
         return []
 
 
-def gemini_request(file_path: str) -> GenerateContentResponse:
+def gemini_request(file_path: str) -> genai.types.GenerateContentResponse:
     try:
-        client = genai.Client(api_key=GOOGLE_API_KEY)
+        client = genai.Client(
+            api_key=GOOGLE_API_KEY,
+            http_options=genai.types.HttpOptions(
+                retry_options=genai.types.HttpRetryOptions(
+                    attempts=5, exp_base=3, initial_delay=3.0, max_delay=60.0
+                )
+            ),
+        )
         model = "gemini-2.5-flash"
         pdf = client.files.upload(file=file_path)
 
-        config = GenerateContentConfig(
+        config = genai.types.GenerateContentConfig(
             temperature=0,
             response_mime_type="application/json",
             response_schema=Flyer,
             max_output_tokens=65536,  # gemini flash max limit
-            thinking_config=ThinkingConfig(thinking_budget=0),  # disable thinking
+            thinking_config=genai.types.ThinkingConfig(
+                thinking_budget=0  # disable thinking
+            ),
             system_instruction=GEMINI_SYSTEM_PROMPT,
         )
 
