@@ -23,6 +23,7 @@ from pyspark.sql.functions import (
     from_json,
     posexplode,
     size,
+    struct,
     udf,
 )
 from pyspark.sql.session import SparkSession
@@ -548,6 +549,17 @@ def write_micro_batch_to_elastic(batch_df, batch_id):
 
     # remove offers from aggregated pdf data before writing to elastic
     aggregated_pdf_df = batch_df.drop("offers_data")
+
+    # Nest all fields except 'name' and 'embeddings' under a 'metadata' column
+    # This plays nice with langchain vectorstore integration
+    metadata_columns = [
+        col for col in offers_df.columns if col not in ("name", "embeddings")
+    ]
+    offers_df = offers_df.select(
+        "name",
+        "embeddings",
+        struct(*metadata_columns).alias("metadata"),
+    )
 
     try:
         # write the static dataframes to elastic

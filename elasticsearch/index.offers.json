@@ -2,21 +2,26 @@
   "mappings": {
     "properties": {
       "name": { "type": "text" },
-      "price": { "type": "float" },
-      "quantity": { "type": "float" },
-      "total_quantity": { "type": "float" },
-      "count": { "type": "float" },
-      "uom": { "type": "keyword" },
-      "category": { "type": "keyword" },
-      "type": { "type": "keyword" },
-      "notes": { "type": "text" },
-      "source": { "type": "keyword" },
-      "flyer_checksum": { "type": "keyword" },
-      "validity_from": { "type": "date" },
-      "validity_to": { "type": "date" },
       "embeddings": {
         "type": "dense_vector",
         "index": true
+      },
+      "metadata": {
+        "type": "object",
+        "properties": {
+          "price": { "type": "float" },
+          "quantity": { "type": "float" },
+          "total_quantity": { "type": "float" },
+          "count": { "type": "float" },
+          "uom": { "type": "keyword" },
+          "category": { "type": "keyword" },
+          "type": { "type": "keyword" },
+          "notes": { "type": "text" },
+          "source": { "type": "keyword" },
+          "flyer_checksum": { "type": "keyword" },
+          "validity_from": { "type": "date" },
+          "validity_to": { "type": "date" }
+        }
       }
     }
   }
