@@ -10,7 +10,13 @@
       "category": { "type": "keyword" },
       "type": { "type": "keyword" },
       "notes": { "type": "text" },
-      "source": { "type": "keyword" },
+      "source": {
+        "type": "object",
+        "properties": {
+          "placeId": { "type": "keyword" },
+          "location": { "type": "geo_point" }
+        }
+      },
       "flyer_checksum": { "type": "keyword" },
       "validity_from": { "type": "date" },
       "validity_to": { "type": "date" },

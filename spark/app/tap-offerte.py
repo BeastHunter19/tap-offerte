@@ -2,7 +2,6 @@
 
 import hashlib
 import os
-import shutil
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -21,9 +20,12 @@ from pyspark.sql.functions import (
     current_timestamp,
     explode,
     from_json,
+    lit,
     posexplode,
     size,
+    struct,
     udf,
+    when,
 )
 from pyspark.sql.session import SparkSession
 from pyspark.sql.streaming.state import GroupState, GroupStateTimeout
@@ -47,7 +49,6 @@ ELASTIC_PORT = os.getenv("ELASTIC_PORT")
 ELASTIC_FLYERS_INDEX = os.getenv("ELASTIC_FLYERS_INDEX")
 ELASTIC_OFFERS_INDEX = os.getenv("ELASTIC_OFFERS_INDEX")
 PDF_DOWNLOAD_PATH = "/tmp/spark_pdfs/"
-SHARED_FOLDER = "/data/"
 GEMINI_PROMPT_FILE = os.getenv("GEMINI_PROMPT_FILE")
 GEMINI_SYSTEM_PROMPT_FILE = os.getenv("GEMINI_SYSTEM_PROMPT_FILE")
 GOOGLE_API_KEY_FILE = os.getenv("GOOGLE_API_KEY_FILE")
@@ -64,12 +65,26 @@ with open(GEMINI_PROMPT_FILE, "r") as gemini_prompt_file:
 
 # --- Spark schemas ---
 
+location_schema = StructType(
+    [
+        StructField("lat", DoubleType(), True),
+        StructField("lon", DoubleType(), True),
+    ]
+)
+
+source_schema = StructType(
+    [
+        StructField("placeId", StringType(), True),
+        StructField("location", location_schema, True),
+    ]
+)
+
 kafka_schema = StructType(
     [
         StructField("filename", StringType(), False),
         StructField("url", StringType(), False),
         StructField("checksum", StringType(), False),
-        StructField("source", StringType(), False),
+        StructField("source", source_schema, False),
     ]
 )
 
@@ -111,7 +126,9 @@ aggregated_schema = StructType(
         StructField("checksum", StringType(), False),
         StructField("url", StringType(), False),
         StructField("filename", StringType(), False),
-        StructField("source", StringType(), False),
+        StructField("source_placeId", StringType(), True),
+        StructField("source_location_lat", DoubleType(), True),
+        StructField("source_location_lon", DoubleType(), True),
         StructField("chunk_total", IntegerType(), False),
         StructField("validity_from", StringType(), False),
         StructField("validity_to", StringType(), False),
@@ -135,6 +152,9 @@ state_schema = StructType(
         StructField("processing_time_seconds", DoubleType()),
         StructField("offers_data", ArrayType(offers_schema)),
         StructField("chunks_seen", ArrayType(IntegerType())),
+        StructField("source_placeId", StringType()),
+        StructField("source_location_lat", DoubleType()),
+        StructField("source_location_lon", DoubleType()),
     ]
 )
 
@@ -184,6 +204,36 @@ def convert_numpy_to_python(obj):
         return obj
 
 
+def extract_source_components(
+    value: Any,
+) -> Tuple[Optional[str], Optional[float], Optional[float]]:
+    if value is None:
+        return None, None, None
+
+    if hasattr(value, "asDict"):
+        value = value.asDict(recursive=True)
+
+    value = convert_numpy_to_python(value)
+
+    if not isinstance(value, dict):
+        return None, None, None
+
+    location = value.get("location")
+    if hasattr(location, "asDict"):
+        location = location.asDict(recursive=True)
+
+    location = convert_numpy_to_python(location)
+
+    if isinstance(location, dict):
+        lat = location.get("lat")
+        lon = location.get("lon")
+    else:
+        lat = None
+        lon = None
+
+    return value.get("placeId"), lat, lon
+
+
 def normalize_date(date: str, day_of_month: str = "current") -> Optional[str]:
     if not isinstance(date, str) or not date.strip():
         print(f"The given date is not a valid string: '{date}'")
@@ -217,9 +267,16 @@ def download_pdf(url: str, expected_checksum: str) -> Optional[str]:
         print(f"Downloading file from url: {url}")  # DEBUG
 
         local_path = os.path.join(PDF_DOWNLOAD_PATH, f"{expected_checksum}.pdf")
-        shutil.copy(os.path.join(SHARED_FOLDER, url), local_path)
-        with open(local_path, "rb") as f:
-            checksum = hashlib.sha256(f.read()).hexdigest()
+        with httpx.Client(follow_redirects=True, timeout=30.0) as client:
+            with client.stream("GET", url) as response:
+                response.raise_for_status()
+                with open(local_path, "wb") as output_file:
+                    for chunk in response.iter_bytes(chunk_size=8192):
+                        if chunk:
+                            output_file.write(chunk)
+
+        with open(local_path, "rb") as downloaded_file:
+            checksum = hashlib.sha256(downloaded_file.read()).hexdigest()
         if checksum != expected_checksum:
             print(
                 f"Checksum mismatch for {url}. Expected {expected_checksum}, got {checksum}."
@@ -293,7 +350,7 @@ def gemini_request(file_path: str) -> genai.types.GenerateContentResponse:
             api_key=GOOGLE_API_KEY,
             http_options=genai.types.HttpOptions(
                 retry_options=genai.types.HttpRetryOptions(
-                    attempts=5, exp_base=3, initial_delay=3.0, max_delay=60.0
+                    attempts=5, exp_base=4, initial_delay=5.0, max_delay=60.0
                 )
             ),
         )
@@ -403,6 +460,9 @@ def aggregate_pdf(
             processing_time_seconds,
             offers_data,
             chunks_seen_list,
+            source_place_id,
+            source_location_lat,
+            source_location_lon,
         ) = state.get
         chunks_seen = set(chunks_seen_list)
     else:
@@ -415,6 +475,9 @@ def aggregate_pdf(
         processing_time_seconds = 0.0
         offers_data = []
         chunks_seen = set()
+        source_place_id = None
+        source_location_lat = None
+        source_location_lon = None
 
     # merge all pandas microbatches
     chunks = [df for df in pd_iterator if not df.empty and not df.isna().all().all()]
@@ -436,6 +499,21 @@ def aggregate_pdf(
         if chunk_n == 0:
             validity_from = chunk.validity_from
             validity_to = chunk.validity_to
+            (
+                source_place_id,
+                source_location_lat,
+                source_location_lon,
+            ) = extract_source_components(chunk.source)
+        elif (
+            source_place_id is None
+            and source_location_lat is None
+            and source_location_lon is None
+        ):
+            (
+                source_place_id,
+                source_location_lat,
+                source_location_lon,
+            ) = extract_source_components(chunk.source)
 
         # Run numerical aggregations
         offers_count += chunk.offers_count
@@ -453,12 +531,24 @@ def aggregate_pdf(
 
             # Convert any numpy types to native Python types
             clean_offers_data = convert_numpy_to_python(offers_data)
+            if (
+                source_place_id is None
+                and source_location_lat is None
+                and source_location_lon is None
+            ):
+                (
+                    source_place_id,
+                    source_location_lat,
+                    source_location_lon,
+                ) = extract_source_components(chunk.source)
 
             pdf_data = {
                 "checksum": [checksum],
                 "url": [chunk.url],
                 "filename": [chunk.filename],
-                "source": [chunk.source],
+                "source_placeId": [source_place_id],
+                "source_location_lat": [source_location_lat],
+                "source_location_lon": [source_location_lon],
                 "chunk_total": [int(chunk.chunk_total)],
                 "validity_from": [validity_from],
                 "validity_to": [validity_to],
@@ -483,7 +573,9 @@ def aggregate_pdf(
             - checksum: {checksum}
             - url: {chunk.url}
             - filename: {chunk.filename}
-            - source: {chunk.source}
+            - source.placeId: {source_place_id}
+            - source.location.lat: {source_location_lat}
+            - source.location.lon: {source_location_lon}
             - chunk_total: {chunk.chunk_total}
             - validity_from: {validity_from}
             - validity_to: {validity_to}
@@ -510,6 +602,9 @@ def aggregate_pdf(
             processing_time_seconds,
             clean_offers_data,
             list(chunks_seen),
+            source_place_id,
+            source_location_lat,
+            source_location_lon,
         )
     )
     yield pd.DataFrame()
@@ -620,16 +715,42 @@ gemini_df = (
 )
 
 # aggregated metadata for each pdf
+aggregated_df = gemini_df.groupBy("checksum").applyInPandasWithState(
+    func=aggregate_pdf,
+    outputMode="append",
+    stateStructType=state_schema,
+    outputStructType=aggregated_schema,
+    timeoutConf=GroupStateTimeout.NoTimeout,
+)
+
+aggregated_df = aggregated_df.withColumn("processed_at", current_timestamp())
+
 aggregated_df = (
-    gemini_df.groupBy("checksum")
-    .applyInPandasWithState(
-        func=aggregate_pdf,
-        outputMode="append",
-        stateStructType=state_schema,
-        outputStructType=aggregated_schema,
-        timeoutConf=GroupStateTimeout.NoTimeout,
+    aggregated_df.withColumn(
+        "source_location_struct",
+        when(
+            col("source_location_lat").isNull() | col("source_location_lon").isNull(),
+            lit(None).cast(location_schema),
+        ).otherwise(
+            struct(
+                col("source_location_lat").alias("lat"),
+                col("source_location_lon").alias("lon"),
+            )
+        ),
     )
-    .withColumn("processed_at", current_timestamp())
+    .withColumn(
+        "source",
+        struct(
+            col("source_placeId").alias("placeId"),
+            col("source_location_struct").alias("location"),
+        ),
+    )
+    .drop(
+        "source_placeId",
+        "source_location_lat",
+        "source_location_lon",
+        "source_location_struct",
+    )
 )
 
 # Use foreachBatch to write to multiple elastic sinks without duplicating all the previous passages

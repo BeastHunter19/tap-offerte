@@ -3,7 +3,13 @@
     "properties": {
       "checksum": { "type": "keyword" },
       "filename": { "type": "keyword" },
-      "source": { "type": "keyword" },
+      "source": {
+        "type": "object",
+        "properties": {
+          "placeId": { "type": "keyword" },
+          "location": { "type": "geo_point" }
+        }
+      },
       "url": { "type": "keyword" },
       "chunk_total": { "type": "integer" },
       "validity_from": { "type": "date" },
