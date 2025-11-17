@@ -6,6 +6,8 @@ services:
       - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     environment:
       XPACK_MONITORING_ENABLED: "false"
+    ports:
+      - "5044:5044"
     depends_on:
       topics:
         condition: service_completed_successfully
