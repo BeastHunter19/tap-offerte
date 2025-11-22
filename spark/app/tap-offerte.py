@@ -410,7 +410,9 @@ def process_chunk(chunk_path: str) -> Dict[str, Any]:
     offers_data = [offer.model_dump() for offer in flyer.offers]
     offers_count = len(offers_data)
 
-    embeddings = get_embeddings([offer.name for offer in flyer.offers])
+    embeddings = get_embeddings(
+        [f"{offer.category} {offer.type} {offer.name}" for offer in flyer.offers]
+    )
     for offer, embedding in zip(offers_data, embeddings):
         offer["embeddings"] = embedding if embedding else None
 
