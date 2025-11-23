@@ -13,7 +13,13 @@
       "category": { "type": "keyword" },
       "type": { 
         "type": "text",
-        "analyzer": "italian"
+        "analyzer": "italian",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "notes": { "type": "text" },
       "source": {
