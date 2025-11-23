@@ -4,7 +4,7 @@ import hashlib
 import os
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Literal, Optional, Tuple
 
 import httpx
 import pandas as pd
@@ -96,7 +96,7 @@ offers_schema = StructType(
         StructField("total_quantity", FloatType(), True),
         StructField("count", FloatType(), True),
         StructField("uom", StringType(), True),
-        StructField("category", StringType(), True),
+        StructField("category", StringType(), False),
         StructField("type", StringType(), True),
         StructField("notes", StringType(), True),
         StructField("validity_from", StringType(), True),
@@ -160,6 +160,23 @@ state_schema = StructType(
 
 # --- Gemini structured output schema ---
 
+ProductCategory = Literal[
+    "Bevande",
+    "Latticini e uova",
+    "Carne e salumi",
+    "Pesce e surgelati",
+    "Frutta e verdura",
+    "Dispensa secca",
+    "Snack e dolci",
+    "Cura della casa",
+    "Cura della persona",
+    "Prodotti per l'infanzia",
+    "Giochi",
+    "Elettrodomestici",
+    "Abbigliamento",
+    "Decorazioni per la casa",
+]
+
 
 class Product(BaseModel):
     name: str
@@ -168,7 +185,7 @@ class Product(BaseModel):
     total_quantity: Optional[float] = None
     count: Optional[float] = None
     uom: Optional[str] = None
-    category: Optional[str] = None
+    category: ProductCategory
     type: Optional[str] = None
     notes: Optional[str] = None
     validity_from: Optional[str] = None
