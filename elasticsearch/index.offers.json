@@ -1,14 +1,20 @@
 {
   "mappings": {
     "properties": {
-      "name": { "type": "text" },
+      "name": { 
+        "type": "text",
+        "analyzer": "italian"
+      },
       "price": { "type": "float" },
       "quantity": { "type": "float" },
       "total_quantity": { "type": "float" },
       "count": { "type": "float" },
       "uom": { "type": "keyword" },
       "category": { "type": "keyword" },
-      "type": { "type": "keyword" },
+      "type": { 
+        "type": "text",
+        "analyzer": "italian"
+      },
       "notes": { "type": "text" },
       "source": {
         "type": "object",
