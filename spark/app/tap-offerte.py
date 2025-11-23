@@ -67,15 +67,17 @@ with open(GEMINI_PROMPT_FILE, "r") as gemini_prompt_file:
 
 location_schema = StructType(
     [
-        StructField("lat", DoubleType(), True),
-        StructField("lon", DoubleType(), True),
+        StructField("lat", DoubleType(), False),
+        StructField("lon", DoubleType(), False),
     ]
 )
 
 source_schema = StructType(
     [
-        StructField("placeId", StringType(), True),
-        StructField("location", location_schema, True),
+        StructField("placeId", StringType(), False),
+        StructField("location", location_schema, False),
+        StructField("name", StringType(), False),
+        StructField("address", StringType(), False),
     ]
 )
 
@@ -126,9 +128,11 @@ aggregated_schema = StructType(
         StructField("checksum", StringType(), False),
         StructField("url", StringType(), False),
         StructField("filename", StringType(), False),
-        StructField("source_placeId", StringType(), True),
-        StructField("source_location_lat", DoubleType(), True),
-        StructField("source_location_lon", DoubleType(), True),
+        StructField("source_placeId", StringType(), False),
+        StructField("source_location_lat", DoubleType(), False),
+        StructField("source_location_lon", DoubleType(), False),
+        StructField("source_name", StringType(), False),
+        StructField("source_address", StringType(), False),
         StructField("chunk_total", IntegerType(), False),
         StructField("validity_from", StringType(), False),
         StructField("validity_to", StringType(), False),
@@ -155,6 +159,8 @@ state_schema = StructType(
         StructField("source_placeId", StringType()),
         StructField("source_location_lat", DoubleType()),
         StructField("source_location_lon", DoubleType()),
+        StructField("source_name", StringType()),
+        StructField("source_address", StringType()),
     ]
 )
 
@@ -223,9 +229,15 @@ def convert_numpy_to_python(obj):
 
 def extract_source_components(
     value: Any,
-) -> Tuple[Optional[str], Optional[float], Optional[float]]:
+) -> Tuple[
+    Optional[str],
+    Optional[float],
+    Optional[float],
+    Optional[str],
+    Optional[str],
+]:
     if value is None:
-        return None, None, None
+        return None, None, None, None, None
 
     if hasattr(value, "asDict"):
         value = value.asDict(recursive=True)
@@ -233,7 +245,7 @@ def extract_source_components(
     value = convert_numpy_to_python(value)
 
     if not isinstance(value, dict):
-        return None, None, None
+        return None, None, None, None, None
 
     location = value.get("location")
     if hasattr(location, "asDict"):
@@ -248,7 +260,10 @@ def extract_source_components(
         lat = None
         lon = None
 
-    return value.get("placeId"), lat, lon
+    name = value.get("name")
+    address = value.get("address")
+
+    return value.get("placeId"), lat, lon, name, address
 
 
 def normalize_date(date: str, day_of_month: str = "current") -> Optional[str]:
@@ -482,6 +497,8 @@ def aggregate_pdf(
             source_place_id,
             source_location_lat,
             source_location_lon,
+            source_name,
+            source_address,
         ) = state.get
         chunks_seen = set(chunks_seen_list)
     else:
@@ -497,6 +514,8 @@ def aggregate_pdf(
         source_place_id = None
         source_location_lat = None
         source_location_lon = None
+        source_name = None
+        source_address = None
 
     # merge all pandas microbatches
     chunks = [df for df in pd_iterator if not df.empty and not df.isna().all().all()]
@@ -514,25 +533,40 @@ def aggregate_pdf(
 
         print(f"Aggregate pdf chunk seen: {chunk_n}")  # DEBUG
 
+        (
+            chunk_place_id,
+            chunk_location_lat,
+            chunk_location_lon,
+            chunk_name,
+            chunk_address,
+        ) = extract_source_components(chunk.source)
+
         # I only want to use the validity dates from the first chunk (flyer start)
         if chunk_n == 0:
             validity_from = chunk.validity_from
             validity_to = chunk.validity_to
-            (
-                source_place_id,
-                source_location_lat,
-                source_location_lon,
-            ) = extract_source_components(chunk.source)
+            source_place_id = chunk_place_id
+            source_location_lat = chunk_location_lat
+            source_location_lon = chunk_location_lon
+            source_name = chunk_name
+            source_address = chunk_address
         elif (
             source_place_id is None
             and source_location_lat is None
             and source_location_lon is None
         ):
-            (
-                source_place_id,
-                source_location_lat,
-                source_location_lon,
-            ) = extract_source_components(chunk.source)
+            source_place_id = chunk_place_id
+            source_location_lat = chunk_location_lat
+            source_location_lon = chunk_location_lon
+            if chunk_name is not None:
+                source_name = chunk_name
+            if chunk_address is not None:
+                source_address = chunk_address
+        else:
+            if source_name is None and chunk_name is not None:
+                source_name = chunk_name
+            if source_address is None and chunk_address is not None:
+                source_address = chunk_address
 
         # Run numerical aggregations
         offers_count += chunk.offers_count
@@ -555,11 +589,13 @@ def aggregate_pdf(
                 and source_location_lat is None
                 and source_location_lon is None
             ):
-                (
-                    source_place_id,
-                    source_location_lat,
-                    source_location_lon,
-                ) = extract_source_components(chunk.source)
+                source_place_id = chunk_place_id
+                source_location_lat = chunk_location_lat
+                source_location_lon = chunk_location_lon
+            if source_name is None and chunk_name is not None:
+                source_name = chunk_name
+            if source_address is None and chunk_address is not None:
+                source_address = chunk_address
 
             pdf_data = {
                 "checksum": [checksum],
@@ -568,6 +604,8 @@ def aggregate_pdf(
                 "source_placeId": [source_place_id],
                 "source_location_lat": [source_location_lat],
                 "source_location_lon": [source_location_lon],
+                "source_name": [source_name],
+                "source_address": [source_address],
                 "chunk_total": [int(chunk.chunk_total)],
                 "validity_from": [validity_from],
                 "validity_to": [validity_to],
@@ -595,6 +633,8 @@ def aggregate_pdf(
             - source.placeId: {source_place_id}
             - source.location.lat: {source_location_lat}
             - source.location.lon: {source_location_lon}
+            - source.name: {source_name}
+            - source.address: {source_address}
             - chunk_total: {chunk.chunk_total}
             - validity_from: {validity_from}
             - validity_to: {validity_to}
@@ -624,6 +664,8 @@ def aggregate_pdf(
             source_place_id,
             source_location_lat,
             source_location_lon,
+            source_name,
+            source_address,
         )
     )
     yield pd.DataFrame()
@@ -762,6 +804,8 @@ aggregated_df = (
         struct(
             col("source_placeId").alias("placeId"),
             col("source_location_struct").alias("location"),
+            col("source_name").alias("name"),
+            col("source_address").alias("address"),
         ),
     )
     .drop(
@@ -769,6 +813,8 @@ aggregated_df = (
         "source_location_lat",
         "source_location_lon",
         "source_location_struct",
+        "source_name",
+        "source_address",
     )
 )
 

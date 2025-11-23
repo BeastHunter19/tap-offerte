@@ -7,7 +7,13 @@
         "type": "object",
         "properties": {
           "placeId": { "type": "keyword" },
-          "location": { "type": "geo_point" }
+          "name": { "type": "keyword" },
+          "location": { "type": "geo_point" },
+          "address": {
+            "type": "keyword",
+            "index": false,
+            "doc_values": false
+          }
         }
       },
       "url": { "type": "keyword" },

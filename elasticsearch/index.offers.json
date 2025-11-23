@@ -26,7 +26,13 @@
         "type": "object",
         "properties": {
           "placeId": { "type": "keyword" },
-          "location": { "type": "geo_point" }
+          "name": { "type": "keyword" },
+          "location": { "type": "geo_point" },
+          "supermarketName": {
+            "type": "keyword",
+            "index": false,
+            "doc_values": false
+          }
         }
       },
       "flyer_checksum": { "type": "keyword" },
