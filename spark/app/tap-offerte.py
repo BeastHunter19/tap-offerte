@@ -62,6 +62,11 @@ with open(GEMINI_SYSTEM_PROMPT_FILE, "r") as gemini_system_prompt_file:
     GEMINI_SYSTEM_PROMPT = gemini_system_prompt_file.read()
 with open(GEMINI_PROMPT_FILE, "r") as gemini_prompt_file:
     GEMINI_PROMPT = gemini_prompt_file.read()
+GEMINI_PROMPT = (
+    GEMINI_PROMPT
+    + "\nSe devi interpretare una data ambigua, ricorda che oggi è "
+    + datetime.now().strftime("%B %d, %Y - %H:%M")
+)
 
 # --- Spark schemas ---
 
