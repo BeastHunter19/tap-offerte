@@ -414,6 +414,10 @@ def gemini_request(file_path: str) -> genai.types.GenerateContentResponse:
             os.remove(file_path)
 
 
+def produce_embeddable_string(product: Product) -> str:
+    return f"{product.name}. {product.type}."
+
+
 def get_embeddings(texts: List[str]) -> List[List[float]]:
     if (
         not isinstance(texts, list)
@@ -448,7 +452,7 @@ def process_chunk(chunk_path: str) -> Dict[str, Any]:
     offers_count = len(offers_data)
 
     embeddings = get_embeddings(
-        [f"{offer.category} {offer.type} {offer.name}" for offer in flyer.offers]
+        [produce_embeddable_string(offer) for offer in flyer.offers]
     )
     for offer, embedding in zip(offers_data, embeddings):
         offer["embeddings"] = embedding if embedding else None
