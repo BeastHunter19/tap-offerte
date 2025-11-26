@@ -40,15 +40,6 @@ services:
       "
     depends_on:
       - broker
-  crawler:
-    build: ./crawler
-    volumes:
-      - shared-storage:/data
-      - ./test_flyers:/tmp
-    depends_on:
-      - logstash
-    environment:
-      - LOGSTASH_HOST=logstash
   spark:
     build: ./spark
     hostname: spark
