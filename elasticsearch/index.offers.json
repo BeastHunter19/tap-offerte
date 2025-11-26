@@ -28,7 +28,7 @@
           "placeId": { "type": "keyword" },
           "name": { "type": "keyword" },
           "location": { "type": "geo_point" },
-          "supermarketName": {
+          "address": {
             "type": "keyword",
             "index": false,
             "doc_values": false
