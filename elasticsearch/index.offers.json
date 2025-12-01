@@ -21,7 +21,10 @@
           }
         }
       },
-      "notes": { "type": "text" },
+      "notes": { 
+        "type": "text",
+        "analyzer": "italian"
+      },
       "source": {
         "type": "object",
         "properties": {
